@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vocab Boom 💣</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+<style>
+body{
+  margin:0;
+  font-family:'Press Start 2P', monospace;
+  background:linear-gradient(135deg,#ff9a9e,#fad0c4);
+  text-align:center;
+}
+.screen{display:none;padding:20px;}
+.screen.active{display:block;}
+h1{color:#fff;text-shadow:3px 3px #000;}
+.box{
+  background:#fff;
+  border:4px solid #000;
+  padding:20px;
+  max-width:500px;
+  margin:20px auto;
+  box-shadow:6px 6px #000;
+}
+button,input,select{
+  font-family:'Press Start 2P';
+  padding:10px;
+  margin:6px;
+  border:3px solid #000;
+}
+button{background:#00eaff;cursor:pointer;}
+button:hover{background:#00c0cc;}
+canvas{
+  width:100%;
+  max-width:440px;
+  height:220px;
+  display:block;
+  margin:10px auto;
+  background:#fff;
+  border:4px solid #000;
+}
+#feedback{
+  font-size:26px;
+  height:60px;
+  margin-top:10px;
+}
+.correct{color:#2ecc71;}
+.wrong{color:#e74c3c;}
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ===== START SCREEN ===== -->
+<div id="startScreen" class="screen active">
+  <h1>🎮 VOCAB BOOM 💣</h1>
+  <div class="box">
+    <p>ENTER YOUR NAME</p>
+    <input id="playerName" placeholder="PLAYER">
+    <p>SELECT LEVEL</p>
+    <select id="level">
+      <option value="easy">EASY</option>
+      <option value="medium">MEDIUM</option>
+      <option value="hard">HARD</option>
+    </select><br>
+    <button onclick="startGame()">START ▶</button>
+  </div>
+</div>
+
+<!-- ===== GAME SCREEN ===== -->
+<div id="gameScreen" class="screen">
+  <div class="topbar">
+    <button onclick="goHome()">⬅ HOME</button>
+    <div id="playerInfo"></div>
+  </div>
+
+  <div class="box">
+    <p id="meaning"></p>
+    <div id="icon" style="font-size:47px"></div>
+    <canvas id="game"></canvas>
+    <div id="feedback"></div>
+    <p>
+      ⭐ <span id="score">0</span>
+      ❤️ <span id="lives">3</span>
+      ⏱ <span id="time">60</span>
+    </p>
+  </div>
+</div>
+
+<!-- ===== RESULT SCREEN ===== -->
+<div id="resultScreen" class="screen">
+  <h1 id="resultTitle"></h1>
+  <div class="box">
+    <p id="finalScore"></p>
+    <button onclick="goHome()">⬅ BACK TO HOME</button>
+  </div>
+</div>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d"); 
+
+function resizeCanvas(){
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+
+  // ⭐ วาดช้อยส์กลับ ถ้ายังเล่นอยู่
+  if(choices.length > 0){
+    drawChoices();
+  }
+}
+
+window.addEventListener("resize", resizeCanvas);
+
+let player="", score=0, lives=3, time=60;
+let words=[], current, choices=[];
+let timer=null;
+
+/* ===== VOCAB ===== */
+const vocab={
+easy: [
+{en:"arrive",th:"มาถึง",icon:"🚶"},
+{en:"borrow",th:"ยืม",icon:"🤝"},
+{en:"decide",th:"ตัดสินใจ",icon:"🧠"},
+{en:"explain",th:"อธิบาย",icon:"🗣️"},
+{en:"follow",th:"ติดตาม",icon:"👣"},
+{en:"improve",th:"พัฒนา",icon:"📈"},
+{en:"invite",th:"เชิญ",icon:"✉️"},
+{en:"protect",th:"ปกป้อง",icon:"🛡️"},
+{en:"return",th:"กลับคืน",icon:"↩️"},
+{en:"suggest",th:"แนะนำ",icon:"💡"},
+{en:"prepare",th:"เตรียมตัว",icon:"🧳"},
+{en:"receive",th:"ได้รับ",icon:"📥"},
+{en:"repair",th:"ซ่อมแซม",icon:"🔧"},
+{en:"replace",th:"แทนที่",icon:"🔁"},
+{en:"search",th:"ค้นหา",icon:"🔍"},
+{en:"share",th:"แบ่งปัน",icon:"🤲"},
+{en:"support",th:"สนับสนุน",icon:"💪"},
+{en:"travel",th:"เดินทาง",icon:"✈️"},
+{en:"understand",th:"เข้าใจ",icon:"✅"},
+{en:"visit",th:"เยี่ยม",icon:"🏠"},
+{en:"accept",th:"ยอมรับ",icon:"✔️"},
+{en:"believe",th:"เชื่อ",icon:"🙏"},
+{en:"change",th:"เปลี่ยนแปลง",icon:"🔄"},
+{en:"choose",th:"เลือก",icon:"🎯"},
+{en:"continue",th:"ดำเนินต่อ",icon:"➡️"},
+{en:"discover",th:"ค้นพบ",icon:"🗺️"},
+{en:"encourage",th:"ให้กำลังใจ",icon:"🌟"},
+{en:"forget",th:"ลืม",icon:"❓"},
+{en:"forgive",th:"ให้อภัย",icon:"💖"},
+{en:"happen",th:"เกิดขึ้น",icon:"⚡"},
+{en:"increase",th:"เพิ่มขึ้น",icon:"📊"},
+{en:"include",th:"รวมถึง",icon:"➕"},
+{en:"join",th:"เข้าร่วม",icon:"👥"},
+{en:"manage",th:"จัดการ",icon:"📋"},
+{en:"notice",th:"สังเกต",icon:"👀"},
+{en:"offer",th:"เสนอ",icon:"🎁"},
+{en:"promise",th:"สัญญา",icon:"🤞"},
+{en:"realize",th:"ตระหนัก",icon:"💭"},
+{en:"remind",th:"เตือน",icon:"⏰"},
+{en:"solve",th:"แก้ปัญหา",icon:"🧩"}
+],
+  medium: [
+{en:"achievement",th:"ความสำเร็จ",icon:"🏆"},
+{en:"analysis",th:"การวิเคราะห์",icon:"📊"},
+{en:"attitude",th:"ทัศนคติ",icon:"🧠"},
+{en:"confidence",th:"ความมั่นใจ",icon:"💪"},
+{en:"consequence",th:"ผลที่ตามมา",icon:"➡️"},
+{en:"consider",th:"พิจารณา",icon:"🤔"},
+{en:"contribute",th:"มีส่วนร่วม",icon:"🤝"},
+{en:"convenient",th:"สะดวก",icon:"🕒"},
+{en:"creative",th:"สร้างสรรค์",icon:"🎨"},
+{en:"describe",th:"บรรยาย",icon:"✍️"},
+{en:"determine",th:"กำหนด",icon:"📌"},
+{en:"efficient",th:"มีประสิทธิภาพ",icon:"⚙️"},
+{en:"emphasize",th:"เน้นย้ำ",icon:"❗"},
+{en:"environment",th:"สิ่งแวดล้อม",icon:"🌍"},
+{en:"essential",th:"จำเป็น",icon:"⭐"},
+{en:"estimate",th:"ประเมิน",icon:"📏"},
+{en:"evidence",th:"หลักฐาน",icon:"🔎"},
+{en:"flexible",th:"ยืดหยุ่น",icon:"🧘"},
+{en:"frequent",th:"บ่อยครั้ง",icon:"🔁"},
+{en:"function",th:"หน้าที่",icon:"🛠️"},
+{en:"impact",th:"ผลกระทบ",icon:"💥"},
+{en:"independent",th:"อิสระ",icon:"🕊️"},
+{en:"influence",th:"อิทธิพล",icon:"🌊"},
+{en:"maintain",th:"รักษาไว้",icon:"🔒"},
+{en:"motivate",th:"กระตุ้น",icon:"🔥"},
+{en:"objective",th:"เป้าหมาย",icon:"🎯"},
+{en:"opportunity",th:"โอกาส",icon:"🚪"},
+{en:"participate",th:"มีส่วนร่วม",icon:"🙋"},
+{en:"potential",th:"ศักยภาพ",icon:"⚡"},
+{en:"priority",th:"ลำดับความสำคัญ",icon:"🥇"},
+{en:"recognize",th:"ยอมรับ/จำได้",icon:"👁️"},
+{en:"require",th:"ต้องการ",icon:"📎"},
+{en:"resource",th:"ทรัพยากร",icon:"📦"},
+{en:"responsible",th:"รับผิดชอบ",icon:"🧾"},
+{en:"significant",th:"สำคัญ",icon:"‼️"},
+{en:"strategy",th:"กลยุทธ์",icon:"♟️"},
+{en:"sufficient",th:"เพียงพอ",icon:"✔️"},
+{en:"theory",th:"ทฤษฎี",icon:"📘"},
+{en:"trend",th:"แนวโน้ม",icon:"📈"},
+{en:"variety",th:"ความหลากหลาย",icon:"🌈"}
+],
+  hard: [
+{en:"assumption",th:"สมมติฐาน",icon:"❓"},
+{en:"awareness",th:"การตระหนักรู้",icon:"👁️"},
+{en:"complexity",th:"ความซับซ้อน",icon:"🌀"},
+{en:"controversial",th:"เป็นที่ถกเถียง",icon:"⚔️"},
+{en:"credibility",th:"ความน่าเชื่อถือ",icon:"✔️"},
+{en:"critical",th:"เชิงวิพากษ์",icon:"🔍"},
+{en:"dedicate",th:"อุทิศ",icon:"❤️"},
+{en:"dimension",th:"มิติ",icon:"📐"},
+{en:"distinction",th:"ความแตกต่าง",icon:"⚖️"},
+{en:"diversity",th:"ความหลากหลาย",icon:"🌍"},
+{en:"eliminate",th:"กำจัด",icon:"❌"},
+{en:"ethical",th:"จริยธรรม",icon:"⚖️"},
+{en:"evaluate",th:"ประเมินค่า",icon:"📊"},
+{en:"fundamental",th:"พื้นฐานสำคัญ",icon:"🧱"},
+{en:"hypothesis",th:"สมมติฐาน",icon:"🧪"},
+{en:"inevitable",th:"หลีกเลี่ยงไม่ได้",icon:"⏳"},
+{en:"interpret",th:"ตีความ",icon:"🧠"},
+{en:"justify",th:"ให้เหตุผล",icon:"📖"},
+{en:"long-term",th:"ระยะยาว",icon:"🕰️"},
+{en:"mechanism",th:"กลไก",icon:"⚙️"},
+{en:"nevertheless",th:"อย่างไรก็ตาม",icon:"↔️"},
+{en:"perspective",th:"มุมมอง",icon:"👓"},
+{en:"phenomenon",th:"ปรากฏการณ์",icon:"🌌"},
+{en:"principle",th:"หลักการ",icon:"📜"},
+{en:"prioritize",th:"จัดลำดับความสำคัญ",icon:"🥇"},
+{en:"proportion",th:"สัดส่วน",icon:"📏"},
+{en:"psychological",th:"ทางจิตวิทยา",icon:"🧠"},
+{en:"relevant",th:"เกี่ยวข้อง",icon:"🔗"},
+{en:"significance",th:"ความสำคัญ",icon:"⭐"},
+{en:"sustainable",th:"ยั่งยืน",icon:"♻️"},
+{en:"theoretical",th:"เชิงทฤษฎี",icon:"📘"},
+{en:"transform",th:"เปลี่ยนแปลง",icon:"🔄"},
+{en:"uncertainty",th:"ความไม่แน่นอน",icon:"❓"},
+{en:"underlying",th:"ที่อยู่เบื้องหลัง",icon:"🪜"},
+{en:"validity",th:"ความถูกต้อง",icon:"✔️"},
+{en:"variable",th:"ตัวแปร",icon:"📊"},
+{en:"violate",th:"ละเมิด",icon:"🚫"},
+{en:"well-being",th:"ความเป็นอยู่ที่ดี",icon:"💙"},
+{en:"widespread",th:"แพร่หลาย",icon:"🌐"},
+{en:"withstand",th:"ทนทาน",icon:"🛡️"}
+]
+};
+
+/* ===== START GAME ===== */
+function startGame(){
+  player=document.getElementById("playerName").value||"PLAYER";
+  const level=document.getElementById("level").value;
+
+  words=[...vocab[level]];
+  score=0; lives=3; time=60;
+
+  document.getElementById("score").innerText=score;
+  document.getElementById("lives").innerText=lives;
+  document.getElementById("time").innerText=time;
+  document.getElementById("playerInfo").innerText="🧠 "+player;
+
+  switchScreen("gameScreen");
+resizeCanvas();     // ⭐ สำคัญมาก
+startTimer();
+nextQuestion();
+}
+
+/* ===== TIMER ===== */
+function startTimer(){
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    time--;
+    document.getElementById("time").innerText=time;
+    if(time<=0){
+      endGame("⏰ TIME UP ⏰");
+    }
+  },1000);
+}
+
+/* ===== NEXT QUESTION ===== */
+function nextQuestion(){
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if(words.length===0){
+    endGame("🎉 YOU WIN 👑");
+    return;
+  }
+
+  current=words.splice(Math.floor(Math.random()*words.length),1)[0];
+  document.getElementById("meaning").innerText="คำไหนแปลว่า: "+current.th;
+  document.getElementById("icon").innerText=current.icon;
+
+  choices=[current];
+  const all=[...vocab.easy,...vocab.medium,...vocab.hard];
+
+  while(choices.length<3){
+    let r=all[Math.floor(Math.random()*all.length)];
+    if(!choices.includes(r)) choices.push(r);
+  }
+
+  choices.sort(()=>Math.random()-0.5);
+
+  // ===== FIX TEXT OVERFLOW =====
+  ctx.font="10px 'Press Start 2P'";
+  const padding=12, gap=10;
+const y = canvas.height / 2 - 20;
+
+  choices.forEach(w=>{
+    const tw=ctx.measureText(w.en).width;
+    w.w=tw+padding*2;
+    w.h=40;
+  });
+
+  const totalWidth =
+    choices.reduce((s,w)=>s+w.w,0)+gap*(choices.length-1);
+  let startX=(canvas.width-totalWidth)/2;
+
+  choices.forEach(w=>{
+    w.x=startX;
+    w.y=y;
+    startX+=w.w+gap;
+  });
+
+drawChoices();
+
+}
+
+/* ===== CLICK ===== */
+canvas.addEventListener("click",e=>{
+  const r=canvas.getBoundingClientRect();
+  const x=e.clientX-r.left, y=e.clientY-r.top;
+
+  choices.forEach(w=>{
+    if(x>w.x && x<w.x+w.w && y>w.y && y<w.y+w.h){
+      if(w===current){
+        score+=10;
+        showFeedback(true);
+      }else{
+        lives--;
+        document.getElementById("lives").innerText=lives;
+        showFeedback(false);
+        if(lives<=0){
+          endGame("💔 GAME OVER 💣");
+          return;
+        }
+      }
+      document.getElementById("score").innerText=score;
+      setTimeout(nextQuestion,900);
+    }
+  });
+});
+
+/* ===== FEEDBACK ===== */
+function showFeedback(correct){
+  document.getElementById("feedback").innerHTML =
+    correct
+    ? "<div class='correct'>✅ CORRECT! 🎊</div>"
+    : "<div class='wrong'>❌ WRONG! 💥</div>";
+}
+
+/* ===== DRAW ===== */
+
+function drawChoices(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.font="10px 'Press Start 2P'";
+
+  choices.forEach(w=>{
+    ctx.fillStyle="#00eaff";
+    ctx.fillRect(w.x,w.y,w.w,w.h);
+    ctx.strokeRect(w.x,w.y,w.w,w.h);
+
+    ctx.fillStyle="#000";
+    ctx.fillText(w.en, w.x + 6, w.y + 25);
+  });
+}
+
+/* ===== END GAME ===== */
+function endGame(title){
+  clearInterval(timer);
+  document.getElementById("resultTitle").innerText=title;
+  document.getElementById("finalScore").innerText=
+    `PLAYER: ${player}\nSCORE: ${score}`;
+  switchScreen("resultScreen");
+}
+
+/* ===== NAV ===== */
+function switchScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+function goHome(){
+  clearInterval(timer);
+  switchScreen("startScreen");
+}
+</script>

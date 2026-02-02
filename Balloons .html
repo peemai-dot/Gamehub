@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Balloon Math Rush 🎈</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+
+/* พื้นหลังหน้าแรก ฟ้า-ขาว */
+#menuScreen{
+  background: linear-gradient(to bottom, #aee7ff, #ffffff);
+}
+
+/* พื้นหลังหน้าเกม ชมพู-ขาว */
+#gameScreen{
+  display:none;
+  background: linear-gradient(to bottom, #ffc1da, #ffffff);
+}
+
+/* พื้นหลังหน้าผลลัพธ์ */
+#resultScreen{
+  background: linear-gradient(to bottom, #fff3b0, #ffffff);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+  overflow:hidden;
+  font-family:'Kanit',sans-serif;
+  touch-action:none;
+  background: linear-gradient(#ffb3d9, #ffe6f2);
+}
+
+/* โครงจอ */
+.screen{
+  position:absolute;
+  width:100%;
+  height:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
+
+/* เมฆ */
+.cloud{
+  position:absolute;
+  width:25vmin;height:12vmin;
+  background:white;border-radius:50px;
+  opacity:.8;filter:blur(1px);
+  animation:cloudMove linear infinite;
+}
+@keyframes cloudMove{
+  from{transform:translateX(-30vw);}
+  to{transform:translateX(130vw);}
+}
+
+/* เกม */
+#gameScreen{
+  display:none;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.8) 60px, transparent 70px),
+    radial-gradient(circle at 80% 40%, rgba(255,255,255,0.8) 60px, transparent 70px),
+    linear-gradient(to bottom, #6ecbff, #bde9ff, #ffffff);
+}
+
+#resultScreen{display:none;}
+
+#topBar{
+  position:absolute;top:0;width:100%;
+  text-align:center;padding:2vh;z-index:10;
+}
+#question{font-size:6vmin;font-weight:bold;color:#333;}
+#info{font-size:3.5vmin;}
+
+#homeBtn{
+  position:absolute;right:2vw;top:2vh;
+  font-size:3vmin;padding:1vh 2vw;
+  background:#ff6b6b;color:white;border:none;border-radius:2vmin;
+  z-index:20;
+}
+
+#balloon{
+  position:absolute;bottom:12vh;left:50%;
+  transform:translateX(-50%);
+  width:10vmin;height:14vmin;
+}
+.balloon-shape{
+  width:100%;height:100%;
+  background:radial-gradient(circle at 30% 30%, #ff9aa2, #ff4d6d);
+  border-radius:50% 50% 45% 45%;
+}
+.string{width:2px;height:6vmin;background:#555;margin:0 auto;}
+
+.choice{
+  position:absolute;top:-15vmin;
+  width:14vmin;height:14vmin;border-radius:3vmin;
+  background:#fff;border:0.6vmin solid #4caf50;
+  text-align:center;line-height:14vmin;
+  font-size:5vmin;font-weight:bold;
+  box-shadow:0 1vmin 1.5vmin rgba(0,0,0,.25);
+}
+
+button{
+  border:none;border-radius:2vmin;margin:6px;
+  font-size:3.5vmin;padding:1vh 2vw;
+}
+</style>
+</head>
+<body>
+
+<!-- เมฆ -->
+<div class="cloud" style="top:10vh;animation-duration:40s;"></div>
+<div class="cloud" style="top:30vh;animation-duration:60s;"></div>
+
+<!-- เมนู -->
+<div id="menuScreen" class="screen">
+  <h1 style="font-size:7vmin;">🎈 Balloon Math Rush 🧠</h1>
+  <input id="playerName" placeholder="โปรดใส่ชื่อผู้เล่น" style="font-size:4vmin;padding:1vh;">
+  <button onclick="startGame(2,'easy')">โหมดง่าย</button>
+  <button onclick="startGame(3,'medium')">โหมดปกติ</button>
+  <button onclick="startGame(4,'hard')">โหมดยาก</button>
+</div>
+
+<!-- เกม -->
+<div id="gameScreen" class="screen">
+  <div id="topBar">
+    <div id="question"></div>
+    <div id="info"></div>
+  </div>
+  <button id="homeBtn" onclick="goHome()">หน้าแรก</button>
+
+  <div id="balloon">
+    <div class="balloon-shape"></div>
+    <div class="string"></div>
+  </div>
+</div>
+
+<!-- ผลลัพธ์ -->
+<div id="resultScreen" class="screen">
+  <h2 id="resultText" style="font-size:5vmin;"></h2>
+  <button onclick="goHome()">กลับหน้าแรก</button>
+</div>
+
+<script>
+const menu=document.getElementById("menuScreen");
+const gameScreen=document.getElementById("gameScreen");
+const resultScreen=document.getElementById("resultScreen");
+const balloon=document.getElementById("balloon");
+const questionEl=document.getElementById("question");
+const infoEl=document.getElementById("info");
+const resultText=document.getElementById("resultText");
+
+let playerName="", speed, score, correctAnswer, level="easy";
+let choices=[], timer=60, timerInterval, gameRunning=false;
+
+/* เสียง */
+let audioCtx;
+function beep(f,d){
+  if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  let o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.frequency.value=f;o.start();
+  g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+d);
+  setTimeout(()=>o.stop(),d*1000);
+}
+
+/* เริ่มเกม */
+function startGame(baseSpeed,lv){
+  level=lv;
+  playerName=document.getElementById("playerName").value||"ผู้เล่น";
+  speed=baseSpeed; score=0; timer=60;
+  menu.style.display="none";
+  resultScreen.style.display="none";
+  gameScreen.style.display="block";
+  gameRunning=true;
+  startTimer();
+  nextRound();
+  gameLoop();
+}
+
+function startTimer(){
+  timerInterval=setInterval(()=>{
+    timer--;
+    updateInfo();
+    if(timer<=0) endGame("⏰ หมดเวลา!");
+  },1000);
+}
+
+/* โจทย์ตามเลเวล */
+function randomQuestion(){
+  let a,b,op;
+  if(level==="easy"){
+    a=Math.ceil(Math.random()*10);
+    b=Math.ceil(Math.random()*10);
+    op=Math.random()<.5?"+":"-";
+  }else if(level==="medium"){
+    a=Math.ceil(Math.random()*20);
+    b=Math.ceil(Math.random()*20);
+    op=["+","-","×"][Math.floor(Math.random()*3)];
+  }else{
+    a=Math.ceil(Math.random()*50)+10;
+    b=Math.ceil(Math.random()*20)+1;
+    op=["×","÷","+","-"][Math.floor(Math.random()*4)];
+  }
+
+  if(op==="×") correctAnswer=a*b;
+  else if(op==="÷"){ correctAnswer=a; a=a*b; }
+  else if(op==="+") correctAnswer=a+b;
+  else correctAnswer=a-b;
+
+  questionEl.innerText=`${a} ${op} ${b} = ?`;
+}
+
+function createChoices(){
+  choices.forEach(c=>c.remove());
+  choices=[];
+  let arr=[correctAnswer];
+  while(arr.length<4){
+    let n=correctAnswer+Math.floor(Math.random()*10)-5;
+    if(!arr.includes(n)) arr.push(n);
+  }
+  arr.sort(()=>Math.random()-.5);
+  [20,40,60,80].forEach((p,i)=>{
+    let d=document.createElement("div");
+    d.className="choice";
+    d.innerText=arr[i];
+    d.style.left=p+"%";
+    d.style.transform="translateX(-50%)";
+    gameScreen.appendChild(d);
+    choices.push(d);
+  });
+}
+
+function nextRound(){ randomQuestion(); createChoices(); updateInfo(); }
+
+function updateInfo(){
+  infoEl.innerText=`${playerName} | คะแนน: ${score} | เวลา: ${timer}s`;
+}
+
+function isHit(a,b){
+  let r1=a.getBoundingClientRect(),r2=b.getBoundingClientRect();
+  return !(r1.right<r2.left||r1.left>r2.right||r1.bottom<r2.top||r1.top>r2.bottom);
+}
+
+function gameLoop(){
+  if(!gameRunning) return;
+  choices.forEach(c=>{
+    let t=parseFloat(c.style.top||"-15");
+    t+=speed;
+    c.style.top=t+"px";
+    if(isHit(c,balloon)){
+      if(+c.innerText===correctAnswer){
+        score++; speed+=0.25; beep(900,.1); nextRound();
+      }else endGame("❌ ตอบผิด!");
+    }
+    if(t>innerHeight) endGame("💔Game Over");
+  });
+  rafId = requestAnimationFrame(gameLoop);
+}
+
+function endGame(msg){
+  gameRunning=false;
+  clearInterval(timerInterval);
+  resultText.innerHTML=`${msg}<br>คะแนน: ${score}`;
+  gameScreen.style.display="none";
+  resultScreen.style.display="flex";
+}
+
+/* ปุ่มหน้าแรกใช้ได้จริง */
+function goHome(){
+  gameRunning=false;
+  clearInterval(timerInterval);
+  choices.forEach(c=>c.remove());
+  gameScreen.style.display="none";
+  resultScreen.style.display="none";
+  menu.style.display="flex";
+}
+
+balloon.addEventListener("pointermove",e=>{
+  if(gameRunning) balloon.style.left=e.clientX+"px";
+});
+</script>
+</body>
+</html>
