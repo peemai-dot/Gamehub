@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>🕹️ Game Menu 🎮</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+<title>🕹️ Game Hub 🎮</title>
 
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:'Fredoka',sans-serif}
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
 
 body{
   height:100vh;
@@ -18,7 +21,6 @@ body{
   animation:bgMove 12s ease infinite;
 }
 
-/* พื้นหลังวิ่ง */
 @keyframes bgMove{
   0%{background-position:0% 50%}
   50%{background-position:100% 50%}
@@ -59,7 +61,6 @@ h1{
   box-shadow:0 4px 0 rgba(0,0,0,.25);
 }
 
-/* ปุ่มแต่ละเกม */
 .balloonBtn{ background:#ff6b6b; }
 .vocabBtn{ background:#00c9a7; }
 
@@ -89,7 +90,6 @@ iframe{
   cursor:pointer;
 }
 
-/* ลูกบอลลอยตกแต่ง */
 .bubble{
   position:absolute;
   bottom:-80px;
@@ -98,6 +98,7 @@ iframe{
   opacity:.5;
   animation:floatUp linear infinite;
 }
+
 @keyframes floatUp{
   to{ transform:translateY(-120vh); }
 }
@@ -106,7 +107,7 @@ iframe{
 <body>
 
 <div id="menu">
-  <h1>🕹️ GAME Menu 🎮</h1>
+  <h1>🎮 GAME HUB 🕹️</h1>
   <button class="gameBtn balloonBtn" onclick="openGame('balloon')">
     🎈 Balloon Math Rush
   </button>
